@@ -1,15 +1,17 @@
-const pg_client = require('../db/connection').pg_client;
+const pg_client = require('../db/connection');
 const pdf = require('html-pdf');
 const htmlTemplate = require('../documents/htmlTemplate');
 
 class DocumentController{
     async createTemplate(req, res){
         const {userId, title, tags, html} = req.body
-
-        pg_client.query('SELECT table_schema,table_name FROM information_schema.tables;', (err, res) => {
+        console.log(pg_client);
+        var id = 6;
+        var name = 'Bertha';
+        pg_client.query(`INSERT INTO company (id_comp, name) VALUES (${id}, '${name}');`, (err, res) => {
             if (err) throw err;
             for (let row of res.rows) {
-                console.log(JSON.stringify(row));
+                
             }
             pg_client.end();
         });
