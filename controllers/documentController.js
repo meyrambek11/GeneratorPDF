@@ -1,4 +1,5 @@
 const pg_client = require('../db/connection');
+const tag_type = require('./consts/tag_type');
 const pdf = require('html-pdf');
 const doc = require('html-docx-js');
 const fs = require('fs')
@@ -7,7 +8,6 @@ const FORMAT_DOCUMENTS = [
     'pdf',
     'doc'
 ]
-
 
 class DocumentController{
     async createTemplate(req, res){
@@ -47,7 +47,29 @@ class DocumentController{
         });
 
         res.json({msg: "success"});
+    }
 
+    async createTags(req, res){
+        const {tags} = req.body;
+        for (let i = 0; i < tags.length; i++){
+            let name = tags[i].name;
+            let value = tags[i].value;
+            let type = tags[i].type;
+
+            if (type != tag_type.SELECT) {
+              
+            }
+
+            pg_client.query(`INSERT INTO tags (name, value, type) VALUES ('${name}', '${value}', '${type}')`, (err, result) => { 
+                if (err) throw err;
+                else {
+                    tagList.push(result.rows[0].id)
+                    console.log('Tags successfully inserted');
+                }
+             });
+        }
+
+        res.json({msg: "success"});
     }
 
     async generateDocument(req, res){
