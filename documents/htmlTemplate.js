@@ -35,4 +35,4 @@ module.exports = htmlTemplate =
    <p style="text-align: right;"></p>
    <p style="text-align: right;">Научный руководитель</p>
    <p style="text-align: right;">__<u>Куандыков А.А.&nbsp; &nbsp; </u>&nbsp; &nbsp; <u>[managerSign]</u></p>
-   <p style="text-align: right;"><em>ФИО&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; подпись</em></p>`
+   <p style="text-align: right;"><em>ФИО&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; подпись</em></p>`;
