@@ -1,5 +1,12 @@
 const pg_client = require('../db/connection');
 const pdf = require('html-pdf');
+const doc = require('html-docx-js');
+const fs = require('fs')
+
+const FORMAT_DOCUMENTS = [
+    'pdf',
+    'doc'
+]
 
 
 class DocumentController{
@@ -41,48 +48,63 @@ class DocumentController{
 
         res.json({msg: "success"});
 
-        // pg_client.query(`INSERT INTO template (id_comp, name) VALUES (${id}, '${name}');`, (err, res) => {
-        //     if (err) throw err;
-        //     else res.json({msg: "success"});
-        // });
-
     }
 
     async generateDocument(req, res){
-        //const id = await req.params.id; // templateID
+        const id = await req.params.id; // templateID
         //const tagsID = await pg_client.query('SELECT tags_id from template_tags_relationship where template_id = $1' [id]);
-        //const htmlTemplate = await pg_client.query('SELECT templateBody from templates where id - $1' [id]);
-        let htmlTemplate = require('../documents/htmlTemplate');
-        const tags = [
-            {
-                name: "clientName",
-                value: "Zhalgas"
+        pg_client.query('SELECT template_body,title from templates where id = $1', [id], (err, result) => { 
+            if (err) throw err;
+            else {
+                let htmlTemplate = result.rows[0].template_body;
+                let tags = req.body.tags;
+                let format = req.body.format;
+                for(let i=0;i<tags.length;i++){
+                    const name = tags[i].name;
+                    const value = tags[i].value;
+                    htmlTemplate = htmlTemplate.replace(`[${name}]`, value);
+                }
+                let title = result.rows[0].title
+                if(format == FORMAT_DOCUMENTS[0]){
+                    pdf.create(htmlTemplate, {}).toFile(`controllers/creatingPDF/${title}.pdf`, (err) => {
+                        if(err) {
+                            res.status(400).json(err);
+                        }
+            
+                        res.json({msg: "success"});
+                    });
+                }
+                else if(format == FORMAT_DOCUMENTS[1]){
+                    let docx = doc.asBlob(htmlTemplate);
+                    fs.writeFile(`controllers/creatingPDF/${title}.docx`,docx, function (err){
+                        if(err) {
+                            res.status(400).json(err);
+                        }
+            
+                        res.json({msg: "success"});
+                     });
+                }
+                
+                
             }
-        ]
-        const clientNewValue = tags[0].value;
-        const clientNewName = tags[0].name;
-        htmlTemplate = htmlTemplate.replace(`[${clientNewName}]`, clientNewValue);
-        pdf.create(htmlTemplate, {}).toFile('controllers/creatingPDF/result.pdf', (err) => {
-            if(err) {
-                res.status(400).json(err);
-            }
-
-            res.json({msg: "success"});
         });
-
         
-        
-        // const newPerson = db.query('INSERT INTO person (name, surname) values ($1, $2) RETURNING *', [name,surname]);
-        // res.json((await newPerson).rows[0]);
     }
 
-    async createPdf(req,res){
-       
-    }
     async getPdf(req,res){
         res.sendFile(`${__dirname}/creatingPDF/result.pdf`)
     }
 
 }
+
+/*var HtmlDocx = require('html-docx-js');
+var fs = require('fs');
+var html = 'fasfasfasdfsfsdfsf';
+
+var docx = HtmlDocx.asBlob(html);
+fs.writeFile('helloworld3.docx',docx, function (err){
+   if (err) return console.log(err);
+   console.log('done');
+});*/
 
 module.exports = new DocumentController();
