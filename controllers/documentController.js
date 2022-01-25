@@ -5,18 +5,23 @@ const htmlTemplate = require('../documents/htmlTemplate');
 class DocumentController{
     async createTemplate(req, res){
         const {userId, title, tags, html} = req.body
-        var id = 7;
-        var name = 'Bertha';
-        pg_client.query(`INSERT INTO company (id_comp, name) VALUES (${id}, '${name}');`, (err, res) => {
-            if (err) throw err;
-            for (let row of res.rows) {
-                
-            }
-            pg_client.end();
-        });
+        for (let i = 0; i < tags.length; i++){
+            let name = tags[i].name;
+            let value = tags[i].value;
+            let type = tags[i].type;
+            pg_client.query(`INSERT INTO tags (name, value, type) VALUES ('${name}', '${value}', '${type})'`, (err, res) => {
+                if (err) res.json(err);
+                else res.json({msg: "success"});
+            });
+        }
+        
 
+        // pg_client.query(`INSERT INTO template (id_comp, name) VALUES (${id}, '${name}');`, (err, res) => {
+        //     if (err) throw err;
+        //     else res.json({msg: "success"});
+        // });
 
-        res.json({msg: "success"});
+        
         // const newPerson = db.query('INSERT INTO person (name, surname) values ($1, $2) RETURNING *', [name,surname]);
         // res.json((await newPerson).rows[0]);
     }
