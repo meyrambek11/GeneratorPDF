@@ -5,8 +5,7 @@ const htmlTemplate = require('../documents/htmlTemplate');
 class DocumentController{
     async createTemplate(req, res){
         const {userId, title, tags, html} = req.body
-        console.log(pg_client);
-        var id = 6;
+        var id = 7;
         var name = 'Bertha';
         pg_client.query(`INSERT INTO company (id_comp, name) VALUES (${id}, '${name}');`, (err, res) => {
             if (err) throw err;
