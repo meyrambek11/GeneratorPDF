@@ -1,3 +1,4 @@
+const db = require('../db/connection');
 module.exports = htmlTemplate = 
    `<p style="text-align: center;"><strong></strong></p>
    <p style="text-align: center;"><strong></strong></p>
