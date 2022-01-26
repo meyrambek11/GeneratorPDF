@@ -106,12 +106,41 @@ class DocumentController{
                         res.json({msg: "success"});
                      });
                 }
+                else{
+                    res.json({msg: "Choose right format of document"});
+                }
                 
                 
             }
         });
         
     }
+    //get all Templates
+    async getTemplates(req,res){
+        pg_client.query('SELECT title,user_id,id FROM templates', (err, result) => { 
+            if (err) throw err;
+            else {
+                res.status(200).json(result.rows)
+            }
+         });
+    }
+
+    async getTemplateByID(req,res){
+        const id = req.params.id;
+        pg_client.query('SELECT title,template_body FROM templates where id = $1', [id], (err, result) => { 
+            if (err) throw err;
+            else {
+                res.status(200).json(result.rows)
+            }
+        });
+    }
+
+    async deleteTemplateByID(req,res){
+        const id = req.params.id;
+        
+    }
+
+
 
     async getPdf(req,res){
         res.sendFile(`${__dirname}/creatingPDF/result.pdf`)
@@ -119,14 +148,5 @@ class DocumentController{
 
 }
 
-/*var HtmlDocx = require('html-docx-js');
-var fs = require('fs');
-var html = 'fasfasfasdfsfsdfsf';
-
-var docx = HtmlDocx.asBlob(html);
-fs.writeFile('helloworld3.docx',docx, function (err){
-   if (err) return console.log(err);
-   console.log('done');
-});*/
 
 module.exports = new DocumentController();
