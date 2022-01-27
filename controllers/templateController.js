@@ -1,4 +1,6 @@
 const pg_client = require('../db/connection');
+const query_format = require('pg-format');
+const error_builder = require('../utils/error_builder');
 
 class DocumentController {
   async createTemplate(req, res) {
@@ -13,67 +15,75 @@ class DocumentController {
     let templateId = 0;
     let tagIdList = [];
 
-    pg_client.query('SELECT * from tags', (err, result) => {
-      if (err) res.status(400).json({
-        err
-      });
-
+    pg_client.query('SELECT * fromm tags').then(result => {
       const allTags = result.rows;
 
       // Filter tags array, get those tags that exists in database, and push them to tagIdList
       const existingTags = allTags.filter(tag => allTagNamesFromTemplate.includes(tag.name))
-      if (existingTags.length != 0) existingTags.forEach(tag => tagIdList.push(tag.id));
-
+      if (existingTags.length != 0) existingTags.forEach(tag => tagIdList.push(tag.id)); 
+    
       // Creating array that includes tag names from tags object array
       const allTagNamesFromDatabase = allTags.map(function (tagObject) {
         return tagObject.name;
       });
 
-      // Filter tag names from template array, get those tags that doesn't exists in database
-      const newTags = allTagNamesFromTemplate.filter(tag => !allTagNamesFromDatabase.includes(tag))
+      // Filter tag names from template array, get those tags that doesn't exists in database,
+      // and change array from [clientName, clientPhone, ...] to [[clientName], [clientPhone], [...]] for pg-format
+      const newTags = allTagNamesFromTemplate
+        .filter(tag => !allTagNamesFromDatabase.includes(tag))
+        .map(tag => [tag]);
 
       // Insert new tags
-      for (let i = 0; i < newTags.length; i++) {
-        pg_client.query(`INSERT INTO tags (name) VALUES ('${newTags[i]}') RETURNING id`, (err, result) => {
-          if (err) res.status(400).json({
-            err: `Insertion of tag failed with error: ${err}`
-          });
-          else {
-            tagIdList.push(result.rows[0].id);
-            console.log('Tags successfully inserted');
+      if (newTags.length != 0) {
+        pg_client.query(query_format(`INSERT INTO tags (name) VALUES %L RETURNING id`, newTags)).then(result => {
+          const insertedTagIds = result.rows;
+          console.log(`Tags before inserting: ${tagIdList}`);
+          for (let i = 0; i < insertedTagIds.length; i++) {
+            tagIdList.push(insertedTagIds[i].id);
           }
-        });
+          
+          console.log(`Tags after inserting: ${tagIdList}`);
+
+          // INSERT TEMPLATES
+          pg_client.query(`INSERT INTO templates (user_id, template_body, title) VALUES (${userId}, '${templateBody}', '${title}') RETURNING id`).then(result => {
+            templateId = result.rows[0].id;
+            console.log(`Template successfully inserted with id: ${templateId}`);
+
+            const tagIdListForFormat = tagIdList.map(tagId => [templateId, tagId]); 
+            pg_client.query(query_format(`INSERT INTO template_tags_relationship (template_id, tag_id) VALUES %L`, tagIdListForFormat)).then(result => {
+              res.json({msg: 'success'});
+            }).catch(err => res.status(400).json(error_builder(err, 'Error while inserting template_tags_relationship')));
+          }).catch(err => res.status(400).json(error_builder(err, 'Error while inserting template')));
+        }).catch(err => res.status(400).json(error_builder(err, 'Error while inserting tags')));
+      } else {
+
+        // INSERT TEMPLATES
+        pg_client.query(`INSERT INTO templates (user_id, template_body, title) VALUES (${userId}, '${templateBody}', '${title}') RETURNING id`).then(result => {
+          templateId = result.rows[0].id;
+          console.log(`Template successfully inserted with id: ${templateId}`);
+
+          const tagIdListForFormat = tagIdList.map(tagId => [templateId, tagId]);    
+          pg_client.query(query_format(`INSERT INTO template_tags_relationship (template_id, tag_id) VALUES %L`, tagIdListForFormat)).then(result => {
+            res.json({msg: 'success'});
+          }).catch(err => res.status(400).json(error_builder(err, 'Error while inserting template')));
+        }).catch(err => res.status(400).json(error_builder(err, 'Error while inserting tags')));
       }
-    });
-
-
-    pg_client.query(`INSERT INTO templates (user_id, template_body, title) VALUES (${userId}, '${templateBody}', '${title}') RETURNING id`, (err, result) => {
-      if (err) throw err;
-      else {
-        templateId = result.rows[0].id;
-        console.log(`Template successfully inserted with id: ${templateId}`);
-
-        for (let i = 0; i < tagIdList.length; i++) {
-          pg_client.query(`INSERT INTO template_tags_relationship (template_id, tag_id) VALUES (${templateId}, ${tagIdList[i]})`, (err, result) => {
-            if (err) throw err;
-            else {
-              console.log('Template tags relationship successfully inserted');
-            }
-          });
-        }
-      }
-    });
-    res.json({
-      msg: 'success'
-    });
+    })
+    .catch(err => res.status(400).json(error_builder(err, 'Error while select tags')));
   }
 
   // update template
   async updateTemplate(req, res) {
+    const {
+      userId,
+      title,
+      templateBody
+    } = req.body;
+    const regexForGettingTags = /(?<=\[).+?(?=\])/g;
 
-    res.status(200).json(result.rows)
-
-  }
+    const rows = 1
+    console.log(rows);
+  };
 
   //get all Templates
   async getTemplates(req, res) {

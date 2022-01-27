@@ -4,7 +4,7 @@ const documentController = require('../controllers/DocumentController');
 const templateController = require('../controllers/TemplateController');
 
 router.post('/create-template', templateController.createTemplate); // create template and tags
-router.put('/template/:id', templateController.updateTemplate); // update template
+router.patch('/template/:id', templateController.updateTemplate); // update template
 router.get('/templates', templateController.getTemplates); // get all templates
 router.get('/tags/:id', templateController.getTagsByTemplateID); //get tags by template ID
 router.get('/template/:id', templateController.getTemplateByID); // get template by ID
