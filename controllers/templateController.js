@@ -1,10 +1,6 @@
 const pg_client = require('../db/connection');
-<<<<<<< HEAD
 const query_format = require('pg-format');
 const error_builder = require('../utils/error_builder');
-=======
-const format = require('pg-format');
->>>>>>> ee24dca2088d236b1814abbb9e611a4a9514e00e
 
 class DocumentController {
   async createTemplate(req, res) {
