@@ -15,7 +15,7 @@ class DocumentController {
     let templateId = 0;
     let tagIdList = [];
 
-    pg_client.query('SELECT * fromm tags').then(result => {
+    pg_client.query('SELECT * from tags').then(result => {
       const allTags = result.rows;
 
       // Filter tags array, get those tags that exists in database, and push them to tagIdList
@@ -81,10 +81,83 @@ class DocumentController {
       title,
       templateBody
     } = req.body;
+    const templateId = req.params.id;
     const regexForGettingTags = /(?<=\[).+?(?=\])/g;
+    const allTagNamesFromNewTemplate = templateBody.match(regexForGettingTags);
 
-    const rows = 1
-    console.log(rows);
+    // Select all tags with id of template that uses it and count of tags
+    pg_client.query(
+      `SELECT template_id, count_table.tag_id, count_table.name, count_table.relations_count
+      FROM template_tags_relationship as main_table 
+      INNER JOIN (
+	      SELECT tag_id, tag_table.name, COUNT(tag_id) as relations_count 
+        FROM template_tags_relationship as relationship_table
+	      INNER JOIN (
+		      SELECT * FROM tags
+	      ) as tag_table on tag_table.id = relationship_table.tag_id
+        GROUP BY tag_id, tag_table.name
+      ) as count_table on main_table.tag_id = count_table.tag_id`
+    )
+    .then(result => {
+      const tags = result.rows
+      const allTagNamesFromDb = tags.map(tag => tag.name)
+      // DELETE tags from relationship table
+      const tagsByTemplateIdFromDatabase = tags.filter(tag => tag.template_id == templateId);
+
+      const tagsToDelete = tagsByTemplateIdFromDatabase.filter(tag => !allTagNamesFromNewTemplate.includes(tag.name));
+      if(tagsToDelete.length > 0){
+        const tagIdsToDeleteFromRelation = tagsToDelete.map(tag => tag.tag_id);
+        pg_client.query(query_format(`DELETE FROM template_tags_relationship WHERE tag_id IN (%L) and template_id = %L`, tagIdsToDeleteFromRelation, templateId))
+        .then(result => console.log(`DELETE FROM template_tags_relationship succeeded`))
+        .catch(err => res.status(400).json(error_builder(err, 'DELETE FROM template_tags_relationship failed')))
+
+        // DELETE from tags if relations count == 1
+        const tagIdsToDeleteWholeTag = tagsToDelete.filter(tag => tag.relations_count == 1).map(tag => tag.tag_id);
+        if(tagIdsToDeleteWholeTag.length > 0){
+          pg_client.query(query_format(`DELETE FROM tags WHERE id IN (%L)`, tagIdsToDeleteWholeTag))
+          .then(result => console.log(`DELETE FROM tags succeeded with result: ${result.rows}`))
+          .catch(err => res.status(400).json(error_builder(err, 'DELETE FROM tags failed')))
+        } else console.log('There is no single tags')
+      } else console.log('There is no updates on tags')
+      
+      // SAVING tags
+      const tagNamesByTemplateIdFromDatabase = tagsByTemplateIdFromDatabase.map(tag => tag.name);
+      const newTemplateTags = allTagNamesFromNewTemplate.filter(tag => !tagNamesByTemplateIdFromDatabase.includes(tag))
+
+      newTemplateTags.forEach(newTemplateTag => {
+        // Check is new tag exists in database
+        const tagExists = allTagNamesFromDb.includes(newTemplateTag);
+        if(tagExists){
+          const existTag = tags.find(tag => tag.name === newTemplateTag)
+          pg_client.query(
+            `INSERT INTO template_tags_relationship (template_id, tag_id) VALUES (${templateId}, ${existTag.tag_id})`
+            ).then(() => {
+              console.log('INSERT template_tags_relationship successful');
+            }).catch(err => res.status(400).json(error_builder(err, 'Error inserting template_tags_relationship')));
+        } else {
+          pg_client.query(`INSERT INTO tags (name) VALUES ('${newTemplateTag}') RETURNING id`).then(result => {
+              const tagId = result.rows[0].id
+              pg_client.query(
+                `INSERT INTO template_tags_relationship (template_id, tag_id) VALUES (${templateId}, ${tagId})`
+                ).then(() => {
+                  console.log('INSERT new tag template_tags_relationship successful');
+                }).catch(err => res.status(400).json(error_builder(err, 'Error inserting template_tags_relationship')));
+            }).catch(err => res.status(400).json(error_builder(err, 'Error inserting tags')));
+        }
+      });
+
+      // Update template
+      pg_client.query(
+        `UPDATE templates 
+        SET user_id = ${userId}, 
+        template_body = '${templateBody}', 
+        title = '${title}'
+        WHERE id = ${templateId}`
+        ).then(() => {
+        console.log('UPDATE template successful');
+      }).catch(err => res.status(400).json(error_builder(err, 'Error updating template')));
+      res.json({msg: "UPDATE successful"});
+    }).catch(err => res.status(400).json(error_builder(err, 'Error while select from template_tags_relationship')));
   };
 
 
