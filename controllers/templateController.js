@@ -202,16 +202,17 @@ class DocumentController {
   //delete template
   async deleteTemplateByID(req, res) {
     const id = req.params.id;
-    const TemplateTagsID = [];
     const tags_id = (await pg_client.query('SELECT tag_id from template_tags_relationship where template_id = $1', [id])).rows;
     if (!tags_id) {
       res.status(400).json({
         success: false, msg: 'tags does not select from template_tags_relationship by templateID'
       })
     }
-    for(let i=0;i<tags_id.length;i++){
-      TemplateTagsID.push(tags_id[i].tag_id)
-    };
+    
+    const TemplateTagsID = tags_id.map(tag =>{
+      return parseInt(tag.tag_id);
+    })
+
     console.log("Template tags: " + TemplateTagsID);
     
     //Delete relationship by template ID
@@ -220,9 +221,7 @@ class DocumentController {
       res.status(400).json({
         success: false, msg: 'Relation do not deleted'
       })
-    }
-
-    const allRelationshipTagsID = [];   
+    }  
 
     const alltags = (await pg_client.query('SELECT tag_id from template_tags_relationship')).rows;
     if (!alltags) {
@@ -230,9 +229,10 @@ class DocumentController {
         success: false, msg: 'All tags does not select from template_tags_relationship'
       })
     }
-    for(let i=0;i<alltags.length;i++){
-      allRelationshipTagsID.push(alltags[i].tag_id)
-    };
+    
+    const allRelationshipTagsID = alltags.map(tagID =>{
+      parseInt(tagID.tag_id);
+    })
     console.log("After deleting relationship tags " + allRelationshipTagsID);
 
     // Filter tag names from template array, get those tags that doesn't exists in database
@@ -248,16 +248,18 @@ class DocumentController {
     }
 
     //Delete filtering tags
-    for(let i=0;i<DelatingTagsID.length;i++){
-      const isDeleteTag = (await pg_client.query('DELETE from tags where id = $1', [DelatingTagsID[i]]));
+    DelatingTagsID.forEach(async tagID =>{
+      const isDeleteTag = (await pg_client.query('DELETE from tags where id = $1', [tagID]));
       if (!isDeleteTag) {
         res.status(400).json({
           success: false, msg: 'Tag do not delete from tags'
         })
       }
-    }
+    })
 
-    res.status(200).json({succsess: true, msg: "Filtering TemplateTags, Template and Template from Relationship succsessfully deleted"});
+    res.status(200).json({succsess: true, msg: "Template succsessfully deleted"});
+    
+
 
   }
 }
