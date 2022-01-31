@@ -3,7 +3,6 @@ const query_format = require('pg-format');
 const error_builder = require('../utils/error_builder');
 
 class DocumentController {
-  
   async createTemplate(req, res) {
     const {
       userId,
@@ -36,7 +35,7 @@ class DocumentController {
 
       // Insert new tags
       if (newTags.length != 0) {
-        pg_client.query(query_format(`INSERT INTO tags (name) VALUES %L RETURNING id`, newTags)).then(result => {
+        insertSeveralTags(newTags).then(result => {
           const insertedTagIds = result.rows;
           console.log(`Tags before inserting: ${tagIdList}`);
           for (let i = 0; i < insertedTagIds.length; i++) {
@@ -159,30 +158,19 @@ class DocumentController {
     });
   }
 
-
-
-
   // get tags by template id;
   async getTagsByTemplateID(req, res) {
-    const TemplateId = req.params.id;
-    const tags_id = (await pg_client.query('SELECT tag_id from template_tags_relationship where template_id = $1', [TemplateId])).rows;
-    if (!tags_id) {
-      res.status(400).json({
-        success: false
+    const templateId = req.params.id;
+    pg_client.query(`SELECT tag_id from template_tags_relationship where template_id = ${templateId}`)
+      .then(result => {
+        const tag_ids = result.rows.map(tags => tags.tag_id);
+        pg_client.query(query_format(`SELECT * from tags where id in (%L)`, tag_ids))
+          .then(result => {
+            res.status(200).json(result.rows)
+          })
+          .catch(err => res.status(400).json(error_builder(err, 'Error while select from tags')))
       })
-    }
-    let tagNamesArr = [];
-    for (let i = 0; i < tags_id.length; i++) {
-      let tag_id = tags_id[i].tag_id;
-      const tag_name = (await pg_client.query('SELECT name from tags where id = $1', [tag_id])).rows[0];
-      if (!tag_name) {
-        res.status(400).json({
-          success: false
-        })
-      }
-      tagNamesArr.push(tag_name.name)
-    }
-    res.status(200).json(tagNamesArr)
+      .catch(err => res.status(400).json(error_builder(err, 'Error while select tags from template_tags_relationship')));
   }
 
 
@@ -285,13 +273,17 @@ function insertIntoTemplates(userId, templateBody, title) {
 };
 
 function insertSeveralRelations(tagIdListForFormat){
-  return pg_client.query(query_format(`INSERT INTO template_tags_relationship (template_id, tag_id) VALUES %L`, tagIdListForFormat));
+  return pg_client.query(query_format(`INSERT INTO template_tags_relationships (template_id, tag_id) VALUES %L`, tagIdListForFormat));
 }
 
 function insertIntoRelations(templateId, tagId){
   return pg_client.query(
     `INSERT INTO template_tags_relationship (template_id, tag_id) VALUES (${templateId}, ${tagId})`
-    )
+    );
+}
+
+function insertSeveralTags(newTags){
+  return pg_client.query(query_format(`INSERT INTO tags (name) VALUES %L RETURNING id`, newTags));
 }
 
 function insertIntoTags(newTemplateTag){
